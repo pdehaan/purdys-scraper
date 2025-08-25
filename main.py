@@ -1,5 +1,5 @@
 import json
-from typing import List, TypedDict
+from typing import List, Literal, TypedDict
 from urllib.parse import urlparse
 
 import httpx
@@ -9,12 +9,23 @@ from parsel import Selector
 URL = "https://www.purdys.com/chocolate/vegan-chocolates"
 
 
-class Product(TypedDict):
-    name: str
-    price: float
-    priceCurrency: str
-    availability: str
-    url: str
+# class Product(TypedDict):
+#     name: str
+#     price: float
+#     priceCurrency: Literal["CAD"]
+#     availability: Literal["InStock", "OutOfStock"]
+#     url: str
+
+Product = TypedDict(
+    "Product",
+    {
+        "name": str,
+        "price": float,
+        "priceCurrency": Literal["CAD"],
+        "availability": Literal["InStock", "OutOfStock"],
+        "url": str,
+    },
+)
 
 
 def parser(data) -> Product:
@@ -34,18 +45,20 @@ def fetch_products(url: str) -> List[Product]:
     res.raise_for_status()
 
     selector = Selector(text=res.text)
-    scripts = selector.css('script[type="application/ld+json"]::text').getall()
+    try:
+        scripts = [
+            json.loads(str)
+            for str in selector.css('script[type="application/ld+json"]::text').getall()
+        ]
+        scripts = [data for data in scripts if isinstance(data, list)]
+
+    except json.JSONDecodeError:
+        print("⚠️ Skipping invalid JSON block")
 
     products = []
-    for script in scripts:
-        try:
-            data = json.loads(script)
-            if isinstance(data, list):
-                items = [parser(item) for item in data if item["@type"] == "Product"]
-                products.extend(items)
-
-        except json.JSONDecodeError:
-            print("⚠️ Skipping invalid JSON block")
+    for data in scripts:
+        items = [parser(item) for item in data if item["@type"] == "Product"]
+        products.extend(items)
 
     return products
 
