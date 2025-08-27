@@ -207,16 +207,22 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "httpx" },
-    { name = "mypy" },
     { name = "parsel" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mypy", specifier = ">=1.17.1" },
     { name = "parsel", specifier = ">=1.10.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "mypy", specifier = ">=1.17.1" }]
 
 [[package]]
 name = "sniffio"
