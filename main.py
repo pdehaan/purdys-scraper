@@ -74,6 +74,7 @@ def fetch_products(url: str) -> List[Product]:
         items = [parser(item) for item in data if item["@type"] == "Product"]
         products.extend(items)
 
+    # TODO: Sort items by name/url?
     return products
 
 

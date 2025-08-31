@@ -8,3 +8,6 @@ lint:
 
 format: lint
 		uvx ruff format
+
+diff:
+		diff `ls -1 data/*.json | tail -2`
