@@ -11,14 +11,7 @@ from parsel import Selector
 
 URL = "https://www.purdys.com/chocolate/vegan-chocolates"
 
-
-# class Product(TypedDict):
-#     name: str
-#     price: float
-#     priceCurrency: Literal["CAD"]
-#     availability: Literal["InStock", "OutOfStock"]
-#     url: str
-
+# TODO: Move to pydantic model?
 Availability = Literal["In Stock", "Out Of Stock"]
 Product = TypedDict(
     "Product",
@@ -67,6 +60,7 @@ def fetch_products(url: str) -> List[Product]:
 
     except json.JSONDecodeError:
         print("⚠️ Skipping invalid JSON block")
+        scripts = []
 
     products = []
     for data in scripts:
@@ -74,8 +68,7 @@ def fetch_products(url: str) -> List[Product]:
         items = [parser(item) for item in data if item["@type"] == "Product"]
         products.extend(items)
 
-    # TODO: Sort items by name/url?
-    return products
+    return sorted(products, key=lambda x: x['url'])
 
 
 if __name__ == "__main__":
@@ -83,5 +76,6 @@ if __name__ == "__main__":
     filepath = Path("data", f"{today}.json")
     data = fetch_products(URL)
 
+    # TODO: Only write file if different from previous file?
     with open(filepath, "w") as fp:
         json.dump(data, fp, indent=2)
