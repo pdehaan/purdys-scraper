@@ -2,14 +2,14 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
-from typing import cast, List, Literal, TypedDict
+from typing import cast, Any, Dict, List, Literal, TypedDict
 from urllib.parse import urlparse
 
 import httpx
 from parsel import Selector
 
 
-URL = "https://www.purdys.com/chocolate/vegan-chocolates"
+URL = "https://www.purdys.com/chocolate/vegan-chocolates#/sort:name:asc"
 
 # TODO: Move to pydantic model?
 Availability = Literal["In Stock", "Out Of Stock"]
@@ -26,6 +26,9 @@ Product = TypedDict(
 
 
 def schema_to_availability(url: str) -> Availability:
+    """
+    Converts from `"https://schema.org/InStock"` to `"In Stock"`.
+    """
     # Convert from schema URL to string.
     availability = urlparse(url).path[1:]
     availability = re.sub(r"([a-z])([A-Z])", r"\1 \2", availability)
@@ -33,7 +36,7 @@ def schema_to_availability(url: str) -> Availability:
     return cast(Availability, availability)
 
 
-def parser(data) -> Product:
+def parser(data: Dict[Any, Any]) -> Product:
     offer = data["offers"][0]
 
     return {
@@ -51,24 +54,25 @@ def fetch_products(url: str) -> List[Product]:
 
     selector = Selector(text=res.text)
     try:
-        scripts = [
+        ldjson_scripts: List[Dict[Any, Any]] = [
             json.loads(str)
             for str in selector.css('script[type="application/ld+json"]::text').getall()
         ]
         # Ignore any ld+json blocks that aren't a list/array.
-        scripts = [data for data in scripts if isinstance(data, list)]
+        scripts = [data for data in ldjson_scripts if isinstance(data, list)]
 
     except json.JSONDecodeError:
         print("⚠️ Skipping invalid JSON block")
         scripts = []
 
-    products = []
+    products: List[Product] = []
     for data in scripts:
         # Only parse items with @type=Product
         items = [parser(item) for item in data if item["@type"] == "Product"]
         products.extend(items)
 
-    return sorted(products, key=lambda x: x['url'])
+    # Sort products by URL so diffs are a bit more consistent.
+    return sorted(products, key=lambda x: x["url"])
 
 
 if __name__ == "__main__":
